@@ -1,7 +1,13 @@
 from transformers import VitsModel, AutoTokenizer
 import sounddevice as sd
 import torch
-print(); print()
+from utils import is_interupted
+from multiprocessing import Value
+from threading import Thread
+
+print();
+print()
+
 
 class Mouth:
     def __init__(self, model_id='kakao-enterprise/vits-vctk', speaker_id=0, device='cpu'):
@@ -17,6 +23,17 @@ class Mouth:
         inputs = inputs.to(self.device)
         output = self.model(**inputs, speaker_id=self.speaker_id).waveform[0].to('cpu')
         sd.play(output, samplerate=self.model.config.sampling_rate)
+        isInterupted = Value('i', 0)
+        seconds_of_audio = len(output) / self.model.config.sampling_rate
+        p = Thread(target=is_interupted, args=(isInterupted, seconds_of_audio))
+        p.start()
+        while True:
+            if isInterupted.value == 1:
+                sd.stop()
+                break
+            elif isInterupted.value == 2:
+                break
+        p.join()
         sd.wait()
 
 
@@ -28,7 +45,3 @@ if __name__ == '__main__':
     print(text)
     mouth.say(text)
     sd.wait()
-
-
-
-
