@@ -2,7 +2,8 @@ from transformers import WhisperProcessor, WhisperForConditionalGeneration
 import torchaudio
 import torchaudio.functional as F
 import torch
-from utils import record
+from utils import record, record_n_seconds
+import numpy as np
 print(); print()
 
 
@@ -26,8 +27,26 @@ class Ear:
     def listen(self):
         audio = record(self.silence_seconds)
         text = self.transcribe(audio)
+        print(text)
         return text
-       
+
+    def listen_for_interruption(self, is_interrupted, seconds_to_listen=1):
+        audio = False
+        for i in range(0, int(seconds_to_listen)):
+            new_audio = record_n_seconds(seconds_to_listen=1)
+            if audio is False:
+                audio = new_audio
+            else:
+                audio = np.hstack((audio, new_audio))
+            print(audio.shape)
+            text = self.transcribe(audio)
+            print(text)
+            if text != '':
+                print('interrupted:', text)
+                is_interrupted.value = 1
+                return
+        is_interrupted.value = 2
+
 
 if __name__ == "__main__":
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
